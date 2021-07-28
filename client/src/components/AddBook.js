@@ -1,63 +1,77 @@
-import React, { Component } from 'react';
-import { graphql, compose } from 'react-apollo';
-import { getAuthorsQuery, addBookMutation, getBooksQuery } from '../queries/queries';
+import React, { useState } from "react";
+import { useQuery, useMutation } from "@apollo/client";
+import {
+  getAuthorsQuery,
+  addBookMutation,
+} from "../queries/queries";
 
-class AddBook extends Component {
-    constructor(props){
-        super(props);
-        this.state = {
-            name: '',
-            genre: '',
-            authorId: ''
-        };
+const AddBook = () => {
+  const [state, setState] = useState({
+    name: "",
+    genre: "",
+    authorId: "",
+  });
+
+  const disabled = !state.name || !state.authorId || !state.genre
+
+  const [addBook, { data:newBookData, error:addBookError, loading }] = useMutation(addBookMutation);
+  const {
+    data: authorsData,
+    loading: authorsLoading,
+    error,
+  } = useQuery(getAuthorsQuery);
+
+  const displayAuthors = () => {
+    if (authorsLoading) {
+      return <option disabled>Loading authors...</option>;
     }
-    displayAuthors(){
-        var data = this.props.getAuthorsQuery;
-        if(data.loading){
-            return( <option disabled>Loading authors</option> );
-        } else {
-            return data.authors.map(author => {
-                return( <option key={ author.id } value={author.id}>{ author.name }</option> );
-            });
-        }
-    }
-    submitForm(e){
-        e.preventDefault()
-        // use the addBookMutation
-        this.props.addBookMutation({
-            variables: {
-                name: this.state.name,
-                genre: this.state.genre,
-                authorId: this.state.authorId
-            },
-            refetchQueries: [{ query: getBooksQuery }]
-        });
-    }
-    render(){
-        return(
-            <form id="add-book" onSubmit={ this.submitForm.bind(this) } >
-                <div className="field">
-                    <label>Book name:</label>
-                    <input type="text" onChange={ (e) => this.setState({ name: e.target.value }) } />
-                </div>
-                <div className="field">
-                    <label>Genre:</label>
-                    <input type="text" onChange={ (e) => this.setState({ genre: e.target.value }) } />
-                </div>
-                <div className="field">
-                    <label>Author:</label>
-                    <select onChange={ (e) => this.setState({ authorId: e.target.value }) } >
-                        <option>Select author</option>
-                        { this.displayAuthors() }
-                    </select>
-                </div>
-                <button>+</button>
-            </form>
+
+    if (authorsData) {
+      return authorsData.authors.map((author) => {
+        return (
+          <option key={author.id} value={author.id}>
+            {author.name}
+          </option>
         );
+      });
     }
-}
 
-export default compose(
-    graphql(getAuthorsQuery, { name: "getAuthorsQuery" }),
-    graphql(addBookMutation, { name: "addBookMutation" })
-)(AddBook);
+    if (addBookError) console.log({ addBookError });
+  };
+  const submitForm = (e) => {
+    e.preventDefault();
+    // use the addBookMutation
+    addBook({
+      variables: state,
+    });
+  };
+
+  return (
+    <form id="add-book" onSubmit={submitForm}>
+      <div className="field">
+        <label>Book name:</label>
+        <input
+          type="text"
+          onChange={(e) => setState({...state, name: e.target.value })}
+        />
+      </div>
+      <div className="field">
+        <label>Genre:</label>
+        <input
+          type="text"
+          onChange={(e) => setState({...state, genre: e.target.value })}
+        />
+      </div>
+      <div className="field">
+        <label>Author:</label>
+        <select onChange={(e) => setState({...state, authorId: e.target.value })}>
+          <option>Select author</option>
+          {displayAuthors()}
+        </select>
+      </div>
+      <button disabled={disabled} style={{background: disabled ? '#e2e2e2' : '#AD1457' }}>+</button>
+    </form>
+  );
+};
+
+export default AddBook;
